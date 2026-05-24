@@ -7,8 +7,10 @@ const connectDB = async () => {
     }
     const conn = await mongoose.connect(process.env.MONGO_URI);
     console.log(`✅ MongoDB Connected:`);
+    global.dbError = null; // Reset error on success
   } catch (error) {
     console.error(`❌ MongoDB Connection Error: ${error.message}`);
+    global.dbError = error.message; // Store the error message
     // Do not call process.exit(1) on Vercel as it crashes the Serverless Function container immediately.
     if (!process.env.VERCEL) {
       process.exit(1);

@@ -91,6 +91,7 @@ app.get("/", (req, res) => {
     diagnostics: {
       databaseConnected: mongoose.connection.readyState === 1,
       databaseState: ["disconnected", "connected", "connecting", "disconnecting"][mongoose.connection.readyState],
+      databaseError: global.dbError || null,
       hasMongoUri: !!process.env.MONGO_URI,
       hasJwtSecret: !!process.env.JWT_SECRET,
       hasClientUrl: !!process.env.CLIENT_URL,
