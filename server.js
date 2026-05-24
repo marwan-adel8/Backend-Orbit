@@ -14,6 +14,40 @@ import commentRoutes from "./routes/commentRoutes.js";
 // Load env vars
 dotenv.config();
 
+const defaultOrigins = [
+  "http://localhost:5173",
+  "https://orbit-ruby-nu.vercel.app",
+];
+
+const allowedOrigins = (process.env.CLIENT_URL || defaultOrigins.join(","))
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+function isOriginAllowed(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  try {
+    const { hostname } = new URL(origin);
+    return hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (isOriginAllowed(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
 // Connect to Database
 connectDB();
 
@@ -23,9 +57,8 @@ const server = http.createServer(app);
 // ⚡ إعداد Socket.io
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    ...corsOptions,
     methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
   },
 });
 
@@ -35,12 +68,7 @@ app.set("io", io);
 // ===========================
 //        Middleware
 // ===========================
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
-    credentials: true,
-  })
-);
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -111,6 +139,11 @@ io.on("connection", (socket) => {
 //       Start Server
 // ===========================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+
+if (!process.env.VERCEL) {
+  server.listen(PORT, () => {
+    console.log(`✅ Server running on port ${PORT}`);
+  });
+}
+
+export default app;
