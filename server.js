@@ -3,6 +3,7 @@ import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
 import connectDB from "./config/db.js";
 
 import authRoutes from "./routes/authRoutes.js";
@@ -87,6 +88,13 @@ app.get("/", (req, res) => {
     success: true,
     message: "🚀 OrbitTask API is running!",
     version: "1.0.0",
+    diagnostics: {
+      databaseConnected: mongoose.connection.readyState === 1,
+      databaseState: ["disconnected", "connected", "connecting", "disconnecting"][mongoose.connection.readyState],
+      hasMongoUri: !!process.env.MONGO_URI,
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      hasClientUrl: !!process.env.CLIENT_URL,
+    }
   });
 });
 
