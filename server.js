@@ -69,6 +69,9 @@ app.set("io", io);
 //        Middleware
 // ===========================
 app.use(cors(corsOptions));
+// Explicit pre-flight handler — ensures OPTIONS requests get CORS headers
+// before hitting any other middleware on Vercel's serverless environment
+app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
