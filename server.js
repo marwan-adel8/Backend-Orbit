@@ -69,9 +69,6 @@ app.set("io", io);
 //        Middleware
 // ===========================
 app.use(cors(corsOptions));
-// Explicit pre-flight handler — ensures OPTIONS requests get CORS headers
-// before hitting any other middleware on Vercel's serverless environment
-app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -144,9 +141,13 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 5000;
 
 if (!process.env.VERCEL) {
-  server.listen(PORT, () => {
-    console.log(`✅ Server running on port ${PORT}`);
-  });
+  try {
+    server.listen(PORT, () => {
+      console.log(`✅ Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error(`❌ Failed to start server listener: ${error.message}`);
+  }
 }
 
 export default app;
