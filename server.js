@@ -15,9 +15,10 @@ import commentRoutes from "./routes/commentRoutes.js";
 // Load env vars
 dotenv.config();
 
+// 1. ضفنا الدومين الجديد بتاعك هنا كـ Default احتياطي
 const defaultOrigins = [
   "http://localhost:5173",
-  "https://orbit-ruby-nu.vercel.app",
+  "https://orbit-ecru-theta.vercel.app" 
 ];
 
 const allowedOrigins = (process.env.CLIENT_URL || defaultOrigins.join(","))
@@ -26,7 +27,7 @@ const allowedOrigins = (process.env.CLIENT_URL || defaultOrigins.join(","))
   .filter(Boolean);
 
 function isOriginAllowed(origin) {
-  if (!origin) return true;
+  if (!origin) return true; // مسموح للـ Server-to-Server أو الـ Postman
   if (allowedOrigins.includes(origin)) return true;
   try {
     const { hostname } = new URL(origin);
@@ -36,17 +37,19 @@ function isOriginAllowed(origin) {
   }
 }
 
+// 2. تعديل الـ CORS Options عشان ترجع أيرور صريح للبراوزر لو الـ Origin مش مسموح
 const corsOptions = {
   origin(origin, callback) {
     if (isOriginAllowed(origin)) {
       callback(null, true);
     } else {
-      callback(null, false);
+      callback(new Error(`Origin [${origin}] Not allowed by CORS`));
     }
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  optionsSuccessStatus: 200 // مهم جداً عشان متصفحات قديمة والـ Preflight requests
 };
 
 // Connect to Database
@@ -55,11 +58,12 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
-// ⚡ إعداد Socket.io
+// ⚡ إعداد Socket.io (هيشتغل Local بس، وعلى فيرسيل الـ API هتشتغل عادي)
 const io = new Server(server, {
   cors: {
-    ...corsOptions,
+    origin: isOriginAllowed, // تمرير الفانكشن مباشرة أدق للـ Sockets
     methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
   },
 });
 
@@ -67,8 +71,9 @@ const io = new Server(server, {
 app.set("io", io);
 
 // ===========================
-//        Middleware
+//         Middleware
 // ===========================
+// تفعيل الـ CORS كأول Middleware خالص قبل الـ Routes
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -119,7 +124,6 @@ app.use((err, req, res, next) => {
 io.on("connection", (socket) => {
   console.log(`🟢 New client connected: ${socket.id}`);
 
-  // اليوزر يدخل "غرفة" المشروع بتاعه
   socket.on("join:project", (projectId) => {
     socket.join(`project:${projectId}`);
     console.log(`📌 Socket ${socket.id} joined project room: ${projectId}`);
@@ -130,7 +134,6 @@ io.on("connection", (socket) => {
     console.log(`📤 Socket ${socket.id} left project room: ${projectId}`);
   });
 
-  // اليوزر يفتح تاسك معينة
   socket.on("join:task", (taskId) => {
     socket.join(`task:${taskId}`);
   });
@@ -153,7 +156,7 @@ if (!process.env.VERCEL) {
   try {
     server.listen(PORT, () => {
       console.log(`✅ Server running on port ${PORT}`);
-    });
+    }               );
   } catch (error) {
     console.error(`❌ Failed to start server listener: ${error.message}`);
   }
